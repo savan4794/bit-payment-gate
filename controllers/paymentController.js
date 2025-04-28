@@ -5,12 +5,10 @@ const QRCode = require('qrcode');
 const createPayment = async (req, res) => {
   try {
     console.log(req.body);
-    const { amount, callbackUrl } = req.body; // Extract amount and callback URL from request body
+    const { amount, callbackUrl,label,message } = req.body;
     console.log(amount);
     console.log(callbackUrl);
     const btcInfo = generateAddress();
-    const label ="INV-0001";
-    const message = "payment for INV-0001";
     // Save the payment info to the database
     const payment = await Payment.create({
       address: btcInfo.address,
@@ -20,17 +18,14 @@ const createPayment = async (req, res) => {
       callbackUrl,
     });
     const uri = `bitcoin:${btcInfo.address}?amount=${amount}&label=${encodeURIComponent(label)}&message=${encodeURIComponent(message)}`;
-    QRCode.toDataURL(uri, function (err, url) {
-      if (err) throw err;
-      console.log(url); // this is a base64 image URL
-    });
-    // Return the response with payment details
+    const qrcode = await generateQRCode(uri); 
     res.status(200).json({
       success: true,
       message: 'Address generated and payment created successfully',
       data: {
         address: payment.address,
         paymentId: payment._id,
+        qrcode:qrcode
       },
     });
   } catch (error) {
@@ -42,7 +37,14 @@ const paymentStatus = async (req, res) => {
   console.log(req);
   
 }
-
+const generateQRCode = (uri) => {
+  return new Promise((resolve, reject) => {
+    QRCode.toDataURL(uri, function (err, url) {
+      if (err) reject(err);
+      resolve(url);
+    });
+  });
+};
 module.exports = {
   createPayment,paymentStatus
 };
